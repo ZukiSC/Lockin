@@ -1,0 +1,366 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>500k Before 19 - Lock-In System</title>
+  <link rel="stylesheet" href="styles.css">
+  <!-- Supabase -->
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.38.0"></script>
+</head>
+<body>
+  <div class="app">
+    <h2 class="sr-only">500k before 19 — lock-in system: countdown, checklist, roadmap, habits, wins, schedule, and AI hustle research</h2>
+    
+    <!-- Header with Theme Toggle -->
+    <div class="header-bar">
+      <div class="header-left">
+        <span class="app-version">v1.0</span>
+      </div>
+      <div class="header-right">
+        <button class="theme-toggle" id="theme-btn" onclick="toggleTheme()" title="Toggle theme">🌙</button>
+      </div>
+    </div>
+
+    <div class="hero">
+      <div class="hero-top">
+        <div>
+          <div class="hero-title">500k before 19.</div>
+          <div class="hero-sub">Oct 15, 2026 — locked in or nah?</div>
+        </div>
+        <div class="cd-pills">
+          <div class="cd-pill"><div class="cd-n" id="cd-d">--</div><div class="cd-l">days</div></div>
+          <div class="cd-pill"><div class="cd-n" id="cd-h">--</div><div class="cd-l">hrs</div></div>
+          <div class="cd-pill"><div class="cd-n" id="cd-m">--</div><div class="cd-l">min</div></div>
+          <div class="cd-pill"><div class="cd-n" id="cd-s">--</div><div class="cd-l">sec</div></div>
+        </div>
+      </div>
+      <div class="money-hero">
+        <div class="money-big">₱<span id="total-earned">0</span></div>
+        <div class="money-goal-label">of ₱500,000 goal</div>
+        <div class="pbar-outer"><div class="pbar-inner" id="main-pbar" style="width:0%"></div></div>
+        <div class="pbar-row"><span id="main-pct">0% there</span><span>₱500K by Oct 15 2026</span></div>
+      </div>
+    </div>
+
+    <div class="nav">
+      <button class="nbtn on" onclick="sw('dash',this)">Dashboard</button>
+      <button class="nbtn" onclick="sw('roadmap',this)">Roadmap</button>
+      <button class="nbtn" onclick="sw('checklist',this)">Checklist</button>
+      <button class="nbtn" onclick="sw('schedule',this)">Schedule</button>
+      <button class="nbtn" onclick="sw('habits',this)">Habits</button>
+      <button class="nbtn" onclick="sw('wins',this)">Wins</button>
+      <button class="nbtn" onclick="sw('analytics',this)">Analytics</button>
+      <button class="nbtn" onclick="sw('hustle',this)">Hustle AI</button>
+      <button class="nbtn" onclick="sw('settings',this)">⚙️</button>
+    </div>
+
+    <!-- Dashboard Tab -->
+    <div id="tab-dash" class="tab on">
+      <div class="goal-tracker">
+        <div class="tracker-label">Days Remaining</div>
+        <div class="tracker-days" id="days-remaining">--</div>
+        <div class="tracker-sub">Until Oct 15, 2026</div>
+      </div>
+      <div class="stats-row">
+        <div class="scard"><div class="scard-l">Tasks done</div><div class="scard-v" id="dash-tasks">0/0</div></div>
+        <div class="scard"><div class="scard-l">Habits today</div><div class="scard-v" id="dash-habits">0/0</div></div>
+        <div class="scard"><div class="scard-l">Wins logged</div><div class="scard-v" id="dash-wins">0</div></div>
+      </div>
+      <div class="section-label">Today's focus</div>
+      <div class="card" id="dash-focus">
+        <div style="font-size:13px;color:var(--color-text-secondary)">Add tasks in the Checklist tab to see today's focus here.</div>
+      </div>
+      <div class="section-label">Current phase</div>
+      <div class="card">
+        <div style="display:flex;align-items:center;gap:8px;margin-bottom:8px">
+          <span class="phase-badge pb-purple">Phase 1</span>
+          <span style="font-size:13px;font-weight:500;color:var(--color-text-primary)">Foundation — Web + AI basics</span>
+        </div>
+        <div style="font-size:12px;color:var(--color-text-secondary);margin-bottom:10px">Days 1–30 · HTML, CSS, JS, APIs, first AI call. 4h learn + 2h build daily.</div>
+        <button class="btn accent" onclick="sw('roadmap',document.querySelectorAll('.nbtn')[1])">View full roadmap ↗</button>
+      </div>
+      <div class="section-label">Quick add</div>
+      <div style="display:flex;gap:8px;flex-wrap:wrap">
+        <button class="btn" onclick="sw('checklist',document.querySelectorAll('.nbtn')[2])">+ Task</button>
+        <button class="btn" onclick="sw('habits',document.querySelectorAll('.nbtn')[4])">+ Habit</button>
+        <button class="btn" onclick="sw('wins',document.querySelectorAll('.nbtn')[5])">+ Win / ₱</button>
+        <button class="btn accent" onclick="sw('hustle',document.querySelectorAll('.nbtn')[6])">Research hustle ↗</button>
+      </div>
+    </div>
+
+    <!-- Roadmap Tab -->
+    <div id="tab-roadmap" class="tab">
+      <div class="section-label">6-month system · ₱10K→₱1M arc</div>
+      <div class="phase-block active-phase">
+        <div class="phase-head">
+          <span class="phase-badge pb-purple">Phase 1</span>
+          <span class="phase-title">Foundation — Web + AI basics</span>
+          <span class="phase-period">Days 1–30</span>
+        </div>
+        <div class="phase-body">HTML/CSS/JS basics + how APIs work. Call your first Claude API. Build 1 mini project per week. 4h learn + 2h build daily. Goal: working chatbot UI.</div>
+        <div class="phase-tasks">
+          <span class="ptag">HTML/CSS</span><span class="ptag">JavaScript</span><span class="ptag">REST APIs</span><span class="ptag">Claude API</span><span class="ptag">Odin Project</span>
+        </div>
+        <button class="btn accent" style="margin-top:10px;font-size:11px" onclick="sw('schedule',document.querySelectorAll('.nbtn')[3])">See week 1 schedule ↗</button>
+      </div>
+      <div class="phase-block">
+        <div class="phase-head">
+          <span class="phase-badge pb-teal">Phase 2</span>
+          <span class="phase-title">Build AI-powered tools</span>
+          <span class="phase-period">Days 31–60</span>
+        </div>
+        <div class="phase-body">Learn React/Next.js. Build real AI tools: resume analyzer, content generators, chatbots for local businesses. Post builds on GitHub + social. 2h learn + 4h build.</div>
+        <div class="phase-tasks">
+          <span class="ptag">Next.js</span><span class="ptag">Tailwind CSS</span><span class="ptag">Prompt eng.</span><span class="ptag">Vercel</span><span class="ptag">3 portfolio projects</span>
+        </div>
+      </div>
+      <div class="phase-block">
+        <div class="phase-head">
+          <span class="phase-badge pb-amber">Phase 3</span>
+          <span class="phase-title">Land clients + sell services</span>
+          <span class="phase-period">Days 61–90</span>
+        </div>
+        <div class="phase-body">Offer "AI-powered website" on Upwork, Fiverr, Facebook groups. Sell to local Davao businesses first — easiest to close. Also push Canva template store on Whop. Target: ₱10K–₱30K/month.</div>
+        <div class="phase-tasks">
+          <span class="ptag">Upwork</span><span class="ptag">Fiverr</span><span class="ptag">Whop store</span><span class="ptag">Cold DM</span><span class="ptag">₱5K–₱15K/project</span>
+        </div>
+      </div>
+      <div class="phase-block">
+        <div class="phase-head">
+          <span class="phase-badge pb-coral">Phase 4</span>
+          <span class="phase-title">Micro-SaaS + recurring income</span>
+          <span class="phase-period">Month 4–6</span>
+        </div>
+        <div class="phase-body">Build one tiny AI SaaS (e.g. "Tagalog email writer", "PH business chatbot builder"). Charge ₱199–₱999/month. 50 subscribers = ₱10K–₱50K MRR. Scale with faceless TikTok/YouTube for organic traffic.</div>
+        <div class="phase-tasks">
+          <span class="ptag">Micro-SaaS</span><span class="ptag">Stripe/GCash</span><span class="ptag">TikTok organic</span><span class="ptag">Recurring ₱</span>
+        </div>
+      </div>
+      <div class="section-label">Side hustle — start this week</div>
+      <div class="card">
+        <div style="font-size:13px;font-weight:500;color:var(--color-text-primary);margin-bottom:8px">Canva template store on Whop/Gumroad</div>
+        <div style="font-size:12px;color:var(--color-text-secondary);margin-bottom:10px;line-height:1.6">Zero coding needed. Design Instagram packs, resume kits, restaurant menus, YouTube thumbnails. Promote on TikTok "template reveal" videos. List for ₱99–₱499 each. Passive income while you learn.</div>
+        <div style="display:flex;flex-wrap:wrap;gap:5px;margin-bottom:10px">
+          <span class="ptag">Instagram post pack</span><span class="ptag">Resume kit</span><span class="ptag">TikTok thumbnail pack</span><span class="ptag">Restaurant menu</span><span class="ptag">Business proposal deck</span><span class="ptag">Facebook ads kit</span><span class="ptag">YouTube thumbnail pack</span><span class="ptag">Real estate cards</span>
+        </div>
+        <div style="font-size:12px;color:var(--color-text-success);font-weight:500">₱1,500–₱8,000/month passive after setup</div>
+      </div>
+    </div>
+
+    <!-- Checklist Tab -->
+    <div id="tab-checklist" class="tab">
+      <div class="stats-row">
+        <div class="scard"><div class="scard-l">Total</div><div class="scard-v" id="t-total">0</div></div>
+        <div class="scard"><div class="scard-l">Done</div><div class="scard-v" id="t-done">0</div></div>
+        <div class="scard"><div class="scard-l">Rate</div><div class="scard-v" id="t-pct">0%</div></div>
+      </div>
+      <div class="pill-row">
+        <button class="pill on" onclick="filterTasks('all',this)">All</button>
+        <button class="pill" onclick="filterTasks('money',this)">Money</button>
+        <button class="pill" onclick="filterTasks('skill',this)">Skill</button>
+        <button class="pill" onclick="filterTasks('health',this)">Health</button>
+      </div>
+      <div class="irow">
+        <input id="task-in" placeholder="Add a task..." onkeydown="if(event.key==='Enter')addTask()"/>
+        <select id="task-cat" style="flex:0;width:90px">
+          <option value="money">Money</option>
+          <option value="skill">Skill</option>
+          <option value="health">Health</option>
+        </select>
+        <button class="btn primary" onclick="addTask()">Add</button>
+      </div>
+      <div class="card"><div id="task-list"></div><div id="task-empty" class="empty-msg">No tasks yet — add one above</div></div>
+    </div>
+
+    <!-- Schedule Tab -->
+    <div id="tab-schedule" class="tab">
+      <div class="section-label">Week 1 daily schedule · 6h/day</div>
+      <div id="sched-list" class="card"></div>
+    </div>
+
+    <!-- Habits Tab -->
+    <div id="tab-habits" class="tab">
+      <div class="stats-row">
+        <div class="scard"><div class="scard-l">Active</div><div class="scard-v" id="h-count">0</div></div>
+        <div class="scard"><div class="scard-l">Done today</div><div class="scard-v" id="h-today">0</div></div>
+        <div class="scard"><div class="scard-l">Best streak</div><div class="scard-v" id="h-best">0d</div></div>
+      </div>
+      <div class="irow">
+        <input id="habit-in" placeholder="New habit (e.g. Code 4h, Study APIs)..." onkeydown="if(event.key==='Enter')addHabit()"/>
+        <button class="btn primary" onclick="addHabit()">Add</button>
+      </div>
+      <div class="card"><div id="habit-list"></div><div id="habit-empty" class="empty-msg">No habits yet — add one above</div></div>
+    </div>
+
+    <!-- Wins Tab -->
+    <div id="tab-wins" class="tab">
+      <div style="margin-bottom:14px">
+        <div style="font-size:28px;font-weight:500;color:var(--color-text-primary);letter-spacing:-1px">₱<span id="w-total">0</span></div>
+        <div style="font-size:12px;color:var(--color-text-secondary);margin-top:2px">earned toward ₱500,000</div>
+        <div class="pbar-outer" style="margin-top:10px"><div class="pbar-inner" id="w-pbar" style="width:0%"></div></div>
+        <div class="pbar-row"><span id="w-pct">0% of ₱500K</span><span id="w-remaining">₱500,000 to go</span></div>
+      </div>
+      <div class="irow" style="flex-wrap:wrap;gap:6px">
+        <input id="win-txt" placeholder="What did you accomplish?" style="flex:2;min-width:140px" onkeydown="if(event.key==='Enter')addWin()"/>
+        <input id="win-php" placeholder="₱ earned" type="number" style="flex:0;width:110px" onkeydown="if(event.key==='Enter')addWin()"/>
+        <button class="btn primary" onclick="addWin()">Log win</button>
+      </div>
+      <div class="card"><div id="win-list"></div><div id="win-empty" class="empty-msg">No wins yet — every peso counts</div></div>
+    </div>
+
+    <!-- Hustle AI Tab -->
+    <div id="tab-hustle" class="tab">
+      <div class="section-label">Trending hustles · 2025–2026 · PH-ready</div>
+
+      <div class="hustle-card">
+        <div class="hc-title">AI chatbot builder for local businesses</div>
+        <div class="hc-tags"><span class="htag ht-hot">Hot</span><span class="htag ht-ai">AI</span><span class="htag ht-ph">PH-ready</span></div>
+        <div class="hc-desc">Build custom chatbots for Davao restaurants, salons, clinics using Claude or OpenAI API. Charge setup fee + monthly retainer. Zero local competition right now.</div>
+        <div class="hc-earn">₱8K–₱20K setup + ₱2K/month retainer per client</div>
+        <button class="hc-ask" onclick="askHustle('How do I pitch and sell AI chatbots to local businesses in Davao Philippines as an 18 year old?')">How to pitch this in Davao ↗</button>
+      </div>
+
+      <div class="hustle-card">
+        <div class="hc-title">Micro-SaaS AI tool (Whop/Gumroad)</div>
+        <div class="hc-tags"><span class="htag ht-hot">Hot</span><span class="htag ht-ai">AI</span><span class="htag ht-new">New wave</span></div>
+        <div class="hc-desc">Build one tiny AI tool — "Tagalog email writer", "PH business caption generator" — with Next.js + Claude API. Charge ₱199–₱999/month. 100 subs = ₱100K MRR.</div>
+        <div class="hc-earn">₱10K–₱100K+/month recurring</div>
+        <button class="hc-ask" onclick="askHustle('Give me 5 micro-SaaS AI tool ideas targeting the Philippines market that an 18-year-old developer can build in under 2 weeks')">Get micro-SaaS ideas ↗</button>
+      </div>
+
+      <div class="hustle-card">
+        <div class="hc-title">Canva template store on Whop</div>
+        <div class="hc-tags"><span class="htag ht-easy">Easy start</span><span class="htag ht-ph">PH-ready</span></div>
+        <div class="hc-desc">Design Instagram packs, resume kits, restaurant menus. Promote on TikTok "template reveal" videos for free organic traffic. No coding needed — start this week.</div>
+        <div class="hc-earn">₱1,500–₱8,000/month passive</div>
+        <button class="hc-ask" onclick="askHustle('Give me a step-by-step plan to set up a Canva template store on Whop and make the first sale within 7 days')">Get the 7-day plan ↗</button>
+      </div>
+
+      <div class="hustle-card">
+        <div class="hc-title">Faceless AI YouTube / TikTok channel</div>
+        <div class="hc-tags"><span class="htag ht-hot">Hot</span><span class="htag ht-ai">AI</span><span class="htag ht-easy">No-face</span></div>
+        <div class="hc-desc">AI voiceover + stock footage + CapCut. Niche: "money tips for Filipinos" or "AI tools explained". Monetize with YouTube ads + affiliate links (Hostinger, Canva, etc.).</div>
+        <div class="hc-earn">₱3K–₱15K/month after 3–4 months</div>
+        <button class="hc-ask" onclick="askHustle('What is the best faceless YouTube or TikTok niche for a Filipino teen in 2025 and how to start in 7 days?')">Best niche for PH ↗</button>
+      </div>
+
+      <div class="hustle-card">
+        <div class="hc-title">Freelance prompt engineering</div>
+        <div class="hc-tags"><span class="htag ht-hot">Hot</span><span class="htag ht-ai">AI</span><span class="htag ht-easy">Easy start</span></div>
+        <div class="hc-desc">Businesses need people who can write effective AI prompts. Sell prompt packs, system prompts, or "AI workflow setup" service on Fiverr. Easiest way to get paid for AI skills now.</div>
+        <div class="hc-earn">₱2K–₱10K per project</div>
+        <button class="hc-ask" onclick="askHustle('How do I start a prompt engineering freelance service on Fiverr as a beginner and get my first client fast?')">How to get first client ↗</button>
+      </div>
+
+      <div class="section-label" style="margin-top:18px">Ask the AI hustle brain</div>
+      <div class="irow">
+        <input id="ai-q" placeholder="e.g. best hustle for 18 yr old in Davao with AI + web dev skills..." onkeydown="if(event.key==='Enter')askHustle()"/>
+        <button class="btn primary" onclick="askHustle()">Research ↗</button>
+      </div>
+      <div class="ai-pane" id="ai-pane"><div id="ai-out" class="ai-txt"></div></div>
+    </div>
+
+    <!-- Analytics Tab -->
+    <div id="tab-analytics" class="tab">
+      <div class="section-label">Weekly Summary</div>
+      <div class="stats-grid">
+        <div class="stat-box">
+          <div class="stat-icon">📊</div>
+          <div class="stat-value" id="weekly-tasks">0</div>
+          <div class="stat-label">Tasks This Week</div>
+        </div>
+        <div class="stat-box">
+          <div class="stat-icon">🔥</div>
+          <div class="stat-value" id="weekly-habits">0</div>
+          <div class="stat-label">Habits Completed</div>
+        </div>
+        <div class="stat-box">
+          <div class="stat-icon">💰</div>
+          <div class="stat-value">₱<span id="weekly-earnings">0</span></div>
+          <div class="stat-label">Earned This Week</div>
+        </div>
+        <div class="stat-box">
+          <div class="stat-icon">⏱️</div>
+          <div class="stat-value" id="daily-streak">0d</div>
+          <div class="stat-label">Current Streak</div>
+        </div>
+      </div>
+      
+      <div class="section-label" style="margin-top: 24px">Productivity Breakdown</div>
+      <div class="card">
+        <div class="chart-container">
+          <canvas id="productivity-chart"></canvas>
+        </div>
+      </div>
+    </div>
+
+    <!-- Settings Tab -->
+    <div id="tab-settings" class="tab">
+      <div class="section-label">Settings</div>
+      
+      <!-- Sync Status -->
+      <div class="card" style="margin-bottom: 20px">
+        <div style="display: flex; align-items: center; gap: 12px; margin-bottom: 12px">
+          <span id="sync-status-dot" style="width: 12px; height: 12px; border-radius: 50%; background: #6dd5c3;"></span>
+          <div>
+            <div style="font-size: 13px; font-weight: 600; color: var(--color-text-primary)">Sync Status</div>
+            <div style="font-size: 12px; color: var(--color-text-secondary); margin-top: 2px">Data auto-saves to cloud</div>
+          </div>
+        </div>
+        <div style="font-size: 11px; color: var(--color-text-tertiary)">
+          Last sync: <span id="last-sync-time">never</span>
+        </div>
+        <button class="setting-btn secondary" style="margin-top: 12px" onclick="manualSync()">Sync Now</button>
+      </div>
+      
+      <div class="settings-group">
+        <div class="setting-item">
+          <div class="setting-info">
+            <div class="setting-title">Theme</div>
+            <div class="setting-desc">Dark/Light mode</div>
+          </div>
+          <button class="setting-btn" id="theme-setting-btn" onclick="toggleTheme()">🌙 Dark</button>
+        </div>
+        
+        <div class="setting-item">
+          <div class="setting-info">
+            <div class="setting-title">Data Management</div>
+            <div class="setting-desc">Export or reset your data</div>
+          </div>
+          <div class="setting-actions">
+            <button class="setting-btn secondary" onclick="exportData()">Export</button>
+            <button class="setting-btn danger" onclick="resetData()">Reset</button>
+          </div>
+        </div>
+        
+        <div class="setting-item">
+          <div class="setting-info">
+            <div class="setting-title">Notifications</div>
+            <div class="setting-desc">Enable audio on wins</div>
+          </div>
+          <label class="toggle-switch">
+            <input type="checkbox" id="notify-toggle" onchange="toggleNotifications()">
+            <span class="toggle-slider"></span>
+          </label>
+        </div>
+      </div>
+      
+      <div class="section-label">About</div>
+      <div class="card">
+        <p style="margin-bottom: 8px"><strong>500k Before 19</strong></p>
+        <p style="font-size: 12px; color: var(--color-text-secondary); line-height: 1.6">A lock-in system designed to help you make ₱500,000 before turning 19. Track tasks, habits, wins, and get AI-powered hustle advice.</p>
+        <p style="font-size: 11px; color: var(--color-text-tertiary); margin-top: 12px">Version 1.1 • Cloud backup enabled • All data encrypted in transit</p>
+        <div style="margin-top: 12px; padding-top: 12px; border-top: 1px solid var(--color-border-tertiary)">
+          <p style="font-size: 11px; color: var(--color-text-secondary); margin-bottom: 6px"><strong>Storage:</strong></p>
+          <p style="font-size: 11px; color: var(--color-text-tertiary)">📱 Local: Browser storage (instant, always accessible)</p>
+          <p style="font-size: 11px; color: var(--color-text-tertiary)">☁️ Cloud: Supabase sync (backup, multi-device)</p>
+        </div>
+      </div>
+    </div>
+
+  </div>
+
+  <script src="script.js"></script>
+</body>
+</html>
