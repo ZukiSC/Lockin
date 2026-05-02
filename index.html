@@ -7,6 +7,10 @@
   <link rel="stylesheet" href="styles.css">
   <!-- Supabase -->
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.38.0"></script>
+  <!-- Chart.js for analytics -->
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0"></script>
+  <!-- Confetti for visual polish -->
+  <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@latest/dist/confetti.min.js"></script>
 </head>
 <body>
   <div class="app">
@@ -286,11 +290,39 @@
           <div class="stat-label">Current Streak</div>
         </div>
       </div>
-      
-      <div class="section-label" style="margin-top: 24px">Productivity Breakdown</div>
+
+      <div class="section-label" style="margin-top: 24px">Earnings Trend</div>
       <div class="card">
         <div class="chart-container">
-          <canvas id="productivity-chart"></canvas>
+          <canvas id="earnings-chart" style="max-height:300px"></canvas>
+        </div>
+      </div>
+
+      <div class="section-label" style="margin-top: 24px">Weekly Task Completion</div>
+      <div class="card">
+        <div class="chart-container">
+          <canvas id="task-completion-chart" style="max-height:250px"></canvas>
+        </div>
+      </div>
+
+      <div class="section-label" style="margin-top: 24px">Insights</div>
+      <div class="card">
+        <div style="display:flex;flex-direction:column;gap:12px">
+          <div>
+            <div style="font-size:12px;color:var(--color-text-secondary);margin-bottom:4px">EARNINGS VELOCITY</div>
+            <div style="font-size:18px;font-weight:700;color:var(--color-text-primary)">₱<span id="earnings-velocity">0</span>/day</div>
+            <div style="font-size:11px;color:var(--color-text-tertiary)">Average earnings per day this month</div>
+          </div>
+          <div>
+            <div style="font-size:12px;color:var(--color-text-secondary);margin-bottom:4px">BEST CATEGORY</div>
+            <div style="font-size:18px;font-weight:700;color:var(--color-text-primary)"><span id="best-category">—</span></div>
+            <div style="font-size:11px;color:var(--color-text-tertiary)">Most completed task category</div>
+          </div>
+          <div>
+            <div style="font-size:12px;color:var(--color-text-secondary);margin-bottom:4px">PROJECTION</div>
+            <div style="font-size:18px;font-weight:700;color:var(--color-text-primary)">₱<span id="projection">0</span></div>
+            <div style="font-size:11px;color:var(--color-text-tertiary)">Estimated by Oct 15 at current pace</div>
+          </div>
         </div>
       </div>
     </div>

@@ -9,6 +9,25 @@ let supabaseReady = false;
 let supabase = null;
 let userId = null;
 
+// Chart instances (global for updating)
+let earningsChart = null;
+let taskCompletionChart = null;
+
+// Phase system
+const phases = [
+  { id: 1, name: 'Foundation — Web + AI basics', start: new Date('2026-05-02'), end: new Date('2026-05-31'), duration: 30, earnings_goal: 10000, color: '#c77dff' },
+  { id: 2, name: 'Build AI-powered tools', start: new Date('2026-06-01'), end: new Date('2026-06-30'), duration: 30, earnings_goal: 100000, color: '#6dd5c3' },
+  { id: 3, name: 'Land clients + sell services', start: new Date('2026-07-01'), end: new Date('2026-07-31'), duration: 30, earnings_goal: 300000, color: '#ffa66d' },
+  { id: 4, name: 'Micro-SaaS + recurring income', start: new Date('2026-08-01'), end: new Date('2026-10-15'), duration: 76, earnings_goal: 500000, color: '#ff8a7a' }
+];
+
+// Daily standup data
+let standups = [];
+
+// Hustle AI conversation history and snippets
+let hustleConversation = [];
+let savedSnippets = [];
+
 const today = new Date().getDay();
 const dayNames = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
 
@@ -46,14 +65,111 @@ async function initSupabase() {
   }
 }
 
+// ===== PHASE SYSTEM =====
+function getCurrentPhase() {
+  const now = new Date();
+  return phases.find(p => now >= p.start && now <= p.end) || phases[0];
+}
+
+function getPhaseProgress() {
+  const phase = getCurrentPhase();
+  const total = phase.duration;
+  const elapsed = Math.floor((new Date() - phase.start) / 86400000);
+  return { elapsed: Math.max(0, Math.min(elapsed, total)), total, percent: Math.round(Math.max(0, Math.min(elapsed, total)) / total * 100) };
+}
+
+function getPhaseTarget() {
+  const phase = getCurrentPhase();
+  return phase.earnings_goal;
+}
+
+function getPhaseEarnings() {
+  const phase = getCurrentPhase();
+  return wins.filter(w => new Date(Math.floor(w.id / 1000)) >= phase.start).reduce((s, w) => s + w.money, 0);
+}
+
+function getDailyTarget() {
+  const phase = getCurrentPhase();
+  const phaseProgress = getPhaseProgress();
+  const remaining = Math.max(1, phase.duration - phaseProgress.elapsed);
+  const goal = phase.earnings_goal;
+  const earned = getPhaseEarnings();
+  return Math.ceil((goal - earned) / remaining);
+}
+
+// ===== ANALYTICS FUNCTIONS =====
+function getEarningsVelocity() {
+  const month = new Date();
+  month.setDate(1);
+  const monthWins = wins.filter(w => new Date(Math.floor(w.id / 1000)) >= month);
+  const daysInMonth = new Date().getDate();
+  const total = monthWins.reduce((s, w) => s + w.money, 0);
+  return Math.round(total / daysInMonth);
+}
+
+function getBestCategory() {
+  if (!tasks.length) return '—';
+  const cats = { money: 0, skill: 0, health: 0 };
+  tasks.filter(t => t.done).forEach(t => cats[t.cat]++);
+  const max = Math.max(...Object.values(cats));
+  const best = Object.entries(cats).find(([k, v]) => v === max);
+  if (!best || best[1] === 0) return '—';
+  return best[0].charAt(0).toUpperCase() + best[0].slice(1);
+}
+
+function getProjection() {
+  const velocity = getEarningsVelocity();
+  const total = wins.reduce((s, w) => s + w.money, 0);
+  const bday = new Date('2026-10-15');
+  const now = new Date();
+  const daysLeft = Math.ceil((bday - now) / 86400000);
+  return Math.round(total + (velocity * daysLeft));
+}
+
+function getLast30DaysEarnings() {
+  const thirtyDaysAgo = new Date();
+  thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
+  const data = {};
+  for (let i = 29; i >= 0; i--) {
+    const d = new Date();
+    d.setDate(d.getDate() - i);
+    const dateStr = d.toLocaleDateString('en-PH', { month: 'short', day: 'numeric' });
+    data[dateStr] = 0;
+  }
+  wins.filter(w => new Date(Math.floor(w.id / 1000)) >= thirtyDaysAgo).forEach(w => {
+    const dateStr = new Date(Math.floor(w.id / 1000)).toLocaleDateString('en-PH', { month: 'short', day: 'numeric' });
+    if (data[dateStr] !== undefined) data[dateStr] += w.money;
+  });
+  return data;
+}
+
+function getWeeklyTaskCompletion() {
+  const today = new Date();
+  const data = {};
+  for (let i = 6; i >= 0; i--) {
+    const d = new Date();
+    d.setDate(d.getDate() - i);
+    const dateStr = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'][d.getDay()];
+    data[dateStr] = { total: 0, completed: 0 };
+  }
+  tasks.forEach(t => {
+    const dateStr = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'][new Date(Math.floor(t.id / 1000)).getDay()];
+    if (data[dateStr]) {
+      data[dateStr].total++;
+      if (t.done) data[dateStr].completed++;
+    }
+  });
+  return data;
+}
+
 // Hybrid Storage System: Supabase + LocalStorage
 const Storage = {
   async save() {
-    const data = { tasks, habits, wins, soundEnabled, timestamp: Date.now() };
-    
+    const data = { tasks, habits, wins, standups, savedSnippets, soundEnabled, timestamp: Date.now() };
+
     // Always save to localStorage first (fast, reliable)
     localStorage.setItem('500k-before-19-data', JSON.stringify(data));
-    
+
     // Try to sync to Supabase if available
     if (supabaseReady && supabase && userId) {
       try {
@@ -62,16 +178,18 @@ const Storage = {
           tasks: tasks,
           habits: habits,
           wins: wins,
+          standups: standups,
+          saved_snippets: savedSnippets,
           preferences: { soundEnabled },
           last_synced: new Date().toISOString(),
           device_timestamp: Date.now()
         };
-        
+
         // Upsert (insert or update) user data
         const { error } = await supabase
           .from('user_data')
           .upsert(syncData, { onConflict: 'user_id' });
-        
+
         if (error) {
           console.warn('Supabase sync failed:', error);
           // Gracefully degrade to localStorage only
@@ -84,7 +202,7 @@ const Storage = {
       }
     }
   },
-  
+
   async load() {
     // Try Supabase first if available
     if (supabaseReady && supabase && userId) {
@@ -94,17 +212,19 @@ const Storage = {
           .select('*')
           .eq('user_id', userId)
           .single();
-        
+
         if (data && !error) {
           tasks = data.tasks || [];
           habits = data.habits || [];
           wins = data.wins || [];
+          standups = data.standups || [];
+          savedSnippets = data.saved_snippets || [];
           soundEnabled = data.preferences?.soundEnabled !== false;
           console.log('✓ Data loaded from Supabase');
-          
+
           // Update local cache
           localStorage.setItem('500k-before-19-data', JSON.stringify({
-            tasks, habits, wins, soundEnabled, timestamp: Date.now()
+            tasks, habits, wins, standups, savedSnippets, soundEnabled, timestamp: Date.now()
           }));
           return true;
         }
@@ -112,7 +232,7 @@ const Storage = {
         console.log('Supabase load failed, falling back to localStorage:', err.message);
       }
     }
-    
+
     // Fallback to localStorage
     const localData = localStorage.getItem('500k-before-19-data');
     if (localData) {
@@ -121,6 +241,8 @@ const Storage = {
         tasks = parsed.tasks || [];
         habits = parsed.habits || [];
         wins = parsed.wins || [];
+        standups = parsed.standups || [];
+        savedSnippets = parsed.savedSnippets || [];
         soundEnabled = parsed.soundEnabled !== false;
         console.log('✓ Data loaded from localStorage');
         return true;
@@ -130,7 +252,7 @@ const Storage = {
     }
     return false;
   },
-  
+
   clear() {
     localStorage.removeItem('500k-before-19-data');
     localStorage.removeItem('500k-before-19-user-id');
@@ -138,7 +260,9 @@ const Storage = {
     tasks = [];
     habits = [];
     wins = [];
-    
+    standups = [];
+    savedSnippets = [];
+
     // Also clear from Supabase if available
     if (supabaseReady && supabase && userId) {
       supabase.from('user_data').delete().eq('user_id', userId).catch(err => {
@@ -419,9 +543,9 @@ renderHabits();
 function addWin() {
   const text = document.getElementById('win-txt').value.trim();
   const money = parseInt(document.getElementById('win-php').value) || 0;
-  
+
   if (!text) return;
-  
+
   const now = new Date();
   wins.unshift({
     id: Date.now(),
@@ -429,15 +553,23 @@ function addWin() {
     money: money,
     date: now.toLocaleDateString('en-PH', { month: 'short', day: 'numeric' })
   });
-  
+
   document.getElementById('win-txt').value = '';
   document.getElementById('win-php').value = '';
-  
+
   renderWins();
   updateMoneyDisplay();
   updateDash();
   Storage.save();
   playSound();
+
+  // Trigger confetti for significant wins
+  if (money >= 1000) {
+    confetti({ particleCount: 50, spread: 60 });
+  }
+
+  // Check for milestones
+  checkMilestones();
 }
 
 function delWin(id) {
@@ -475,10 +607,44 @@ function updateDash() {
   document.getElementById('dash-tasks').textContent = done + '/' + total;
   document.getElementById('dash-habits').textContent = habits.filter(h => h.week[today]).length + '/' + habits.length;
   document.getElementById('dash-wins').textContent = wins.length;
-  
+
+  // Update phase info
+  const phase = getCurrentPhase();
+  const phaseProgress = getPhaseProgress();
+  const phaseEarnings = getPhaseEarnings();
+  const phaseTarget = getPhaseTarget();
+  const dailyTarget = getDailyTarget();
+
+  // Find and update phase display
+  const phaseCard = document.querySelector('.card');
+  if (phaseCard && phaseCard.textContent.includes('Phase')) {
+    const phaseBadgeClass = ['pb-purple', 'pb-teal', 'pb-amber', 'pb-coral'][phase.id - 1];
+    phaseCard.innerHTML = `
+      <div style="display:flex;align-items:center;gap:8px;margin-bottom:8px">
+        <span class="phase-badge ${phaseBadgeClass}">Phase ${phase.id}</span>
+        <span style="font-size:13px;font-weight:500;color:var(--color-text-primary)">${phase.name}</span>
+      </div>
+      <div style="font-size:12px;color:var(--color-text-secondary);margin-bottom:10px">
+        Day ${phaseProgress.elapsed}/${phaseProgress.total} · ${phaseProgress.percent}% complete
+      </div>
+      <div style="margin-bottom:12px">
+        <div style="font-size:11px;color:var(--color-text-secondary);margin-bottom:4px">Phase Earnings</div>
+        <div style="font-size:18px;font-weight:700;color:var(--color-text-primary);margin-bottom:8px">₱${phaseEarnings.toLocaleString('en-PH')} / ₱${phaseTarget.toLocaleString('en-PH')}</div>
+        <div style="background:var(--color-background-tertiary);border-radius:8px;height:8px;overflow:hidden;margin-bottom:8px">
+          <div style="height:100%;background:linear-gradient(90deg, ${phase.color}, ${phase.color}cc);width:${Math.min(100, phaseEarnings / phaseTarget * 100)}%;transition:width 0.6s ease"></div>
+        </div>
+        <div style="font-size:11px;color:var(--color-text-secondary);display:flex;justify-content:space-between">
+          <span>Daily target: ₱${dailyTarget.toLocaleString('en-PH')}</span>
+          <span>${Math.min(100, Math.round(phaseEarnings / phaseTarget * 100))}%</span>
+        </div>
+      </div>
+      <button class="btn accent" onclick="sw('analytics',document.querySelectorAll('.nbtn')[6])">View Analytics ↗</button>
+    `;
+  }
+
   const undone = tasks.filter(t => !t.done).slice(0, 4);
   const fc = document.getElementById('dash-focus');
-  
+
   if (undone.length) {
     fc.innerHTML = undone.map(t => `
       <div class="todo-item">
@@ -496,7 +662,8 @@ function updateDash() {
 updateDash();
 
 // Schedule data
-const schedData = [
+const schedDataByWeek = {
+  week1: [
   {
     day: 'Monday',
     theme: 'How the web works',
@@ -664,8 +831,135 @@ const schedData = [
         type: 'rest'
       }
     ]
+  },
+  week2: [
+    {
+      day: 'Monday',
+      theme: 'React fundamentals',
+      blocks: [
+        { time: 'Hr 1–2', title: 'Watch: React basics', desc: 'Traversy "React Crash Course". Components, JSX, props, state.', type: 'learn' },
+        { time: 'Hr 3–4', title: 'Build: Simple React component', desc: 'Create a counter, todo list, or form component. Use create-react-app.', type: 'build' },
+        { time: 'Hr 5–6', title: 'Connect to API', desc: 'Fetch data from an API and display it in your React component.', type: 'build' }
+      ]
+    },
+    {
+      day: 'Tuesday',
+      theme: 'Next.js + deployment',
+      blocks: [
+        { time: 'Hr 1–2', title: 'Learn: Next.js basics', desc: 'nextjs.org tutorial. File-based routing, API routes, deployment to Vercel.', type: 'learn' },
+        { time: 'Hr 3–5', title: 'Build: First Next.js app', desc: 'Simple multi-page app with navigation. Add a contact form with API route handler.', type: 'build' },
+        { time: 'Hr 6', title: 'Deploy to Vercel', desc: 'Push to GitHub, deploy to Vercel, share the live link.', type: 'explore' }
+      ]
+    },
+    { day: 'Wednesday', theme: 'Claude API integration', blocks: [
+      { time: 'Hr 1–2', title: 'API integration', desc: 'Integrate Claude API into your Next.js app. Build an AI writing tool or chatbot.', type: 'build' },
+      { time: 'Hr 3–4', title: 'Prompt engineering', desc: 'Experiment with system prompts. Build a specialized AI tool (resume writer, code explainer).', type: 'build' },
+      { time: 'Hr 5–6', title: 'Polish & ship', desc: 'Add error handling, loading states, styling. Deploy to Vercel.', type: 'build' }
+    ]},
+    { day: 'Thursday', theme: 'Tailwind CSS + styling', blocks: [
+      { time: 'Hr 1–2', title: 'Learn: Tailwind CSS', desc: 'Quick tutorial on Tailwind. Utility-first CSS, how it works with React/Next.js.', type: 'learn' },
+      { time: 'Hr 3–5', title: 'Restyle all projects', desc: 'Apply Tailwind to Monday, Tuesday, Wednesday projects. Make them look professional.', type: 'build' },
+      { time: 'Hr 6', title: 'Build a landing page', desc: 'Create a simple landing page showcasing your 3 AI tools. Mobile-responsive.', type: 'build' }
+    ]},
+    { day: 'Friday', theme: 'Portfolio setup', blocks: [
+      { time: 'Hr 1–2', title: 'GitHub portfolio', desc: 'Create GitHub README. Add all 4 projects (HTML/CSS/JS chatbot, 3 AI Next.js apps). Clear descriptions.', type: 'explore' },
+      { time: 'Hr 3–4', title: 'Personal portfolio site', desc: 'Build portfolio.yourdomain.com in Next.js. About, projects, contact form.', type: 'build' },
+      { time: 'Hr 5–6', title: 'Polish & deploy', desc: 'Fix bugs, test on mobile, deploy to Vercel. Take screenshots for social media.', type: 'build' }
+    ]},
+    { day: 'Saturday', theme: 'Canva templates + planning', blocks: [
+      { time: 'Hr 1–3', title: 'Finish 5 Canva templates', desc: 'Complete first template pack (Instagram, resume, menu, or thumbnail). List on Whop/Gumroad.', type: 'explore' },
+      { time: 'Hr 4', title: 'Record time-lapse video', desc: 'Record yourself designing 1 template. Post 30-second clip on TikTok with "free template" offer in bio.', type: 'explore' },
+      { time: 'Hr 5–6', title: 'Plan week 3', desc: 'Review what worked. Set weekly goals for Week 3. Rest + recharge.', type: 'rest' }
+    ]},
+    { day: 'Sunday', theme: 'Review + rest', blocks: [
+      { time: 'Hr 1–2', title: 'Code review week 2', desc: 'Walk through all 4 projects. Identify bugs, optimization opportunities.', type: 'learn' },
+      { time: 'Hr 3–4', title: 'Improve one project', desc: 'Pick the weakest one. Refactor code, improve UX, add one new feature.', type: 'build' },
+      { time: 'Hr 5–6', title: 'Rest + social media', desc: 'Post progress on LinkedIn/Twitter. 1 project update + 1 lesson learned. Then rest.', type: 'rest' }
+    ]}
+  ],
+  week3: [
+    { day: 'Monday', theme: 'Upwork profile setup', blocks: [
+      { time: 'Hr 1–2', title: 'Create Upwork profile', desc: 'Professional photo, bio highlighting AI web dev skills, portfolio link to your projects.', type: 'explore' },
+      { time: 'Hr 3–4', title: 'Craft service offerings', desc: 'Create 3 gigs: "AI Chatbot for businesses", "Custom AI tool development", "Next.js AI app".', type: 'explore' },
+      { time: 'Hr 5–6', title: 'Cold pitch 10 people', desc: 'Find business owners on Facebook groups, LinkedIn. Send personalized pitch: "I build AI websites".', type: 'explore' }
+    ]},
+    { day: 'Tuesday', theme: 'Fiverr gigs launch', blocks: [
+      { time: 'Hr 1–2', title: 'Create Fiverr profile', desc: 'Similar setup: portfolio, bio, profile pic. Link all AI projects.', type: 'explore' },
+      { time: 'Hr 3–4', title: 'Create 3 service gigs', desc: 'Gigs: "Build AI chatbot", "AI content generator", "Prompt engineering service".', type: 'explore' },
+      { time: 'Hr 5–6', title: 'Create sales video', desc: '60-second video showing off your AI tools. Post on Fiverr profile. Be energetic!', type: 'explore' }
+    ]},
+    { day: 'Wednesday', theme: 'Cold outreach day', blocks: [
+      { time: 'Hr 1–4', title: 'Reach out to 20 people', desc: 'Find local businesses in Davao (restaurants, clinics, salons on Facebook). Message offer for free AI chatbot demo.', type: 'explore' },
+      { time: 'Hr 5–6', title: 'Collect leads', desc: 'Keep a spreadsheet of interested prospects. Follow up daily.', type: 'explore' }
+    ]},
+    { day: 'Thursday', theme: 'Build custom chatbot', blocks: [
+      { time: 'Hr 1–3', title: 'Build chatbot for prospect', desc: 'Take first serious lead. Build tailored chatbot for their business. 3 hours of focused development.', type: 'build' },
+      { time: 'Hr 4–6', title: 'Demo + negotiate', desc: 'Show them the chatbot, teach them how to use it, discuss pricing: ₱8K–₱15K setup fee.', type: 'explore' }
+    ]},
+    { day: 'Friday', theme: 'Scale outreach', blocks: [
+      { time: 'Hr 1–2', title: 'Follow up with leads', desc: 'Message all 20 people again. "Did you see my offer? Free demo available."', type: 'explore' },
+      { time: 'Hr 3–4', title: 'Refine pitch', desc: 'Update your messaging based on responses. What objections come up? Solve them.', type: 'explore' },
+      { time: 'Hr 5–6', title: 'Next chatbot project', desc: 'Start building another custom chatbot for 2nd prospect or high-intent lead.', type: 'build' }
+    ]},
+    { day: 'Saturday', theme: 'Template business growth', blocks: [
+      { time: 'Hr 1–3', title: 'Create second template pack', desc: 'New niche (business proposals, Facebook ad templates, YouTube thumbnails). Design 8 templates.', type: 'build' },
+      { time: 'Hr 4', title: 'Create TikTok content', desc: 'Film 3x 30-second template reveal videos. Post with "link in bio" CTAs.', type: 'explore' },
+      { time: 'Hr 5–6', title: 'Analyze metrics', desc: 'Check Upwork/Fiverr messages, Whop sales, TikTok views. Plan next week based on what\\'s working.', type: 'explore' }
+    ]},
+    { day: 'Sunday', theme: 'Weekly standup + rest', blocks: [
+      { time: 'Hr 1–2', title: 'Review week 3', desc: 'Count leads, conversations, deals in progress. Did any close?', type: 'learn' },
+      { time: 'Hr 3–4', title: 'Optimize best channel', desc: 'Whatever channel got most traction (Upwork, cold DM, Fiverr), refine it.', type: 'explore' },
+      { time: 'Hr 5–6', title: 'Rest + plan week 4', desc: 'Step away from screens. Write down this week\\'s wins. Plan week 4 targets.', type: 'rest' }
+    ]}
+  ],
+  week4: [
+    { day: 'Monday', theme: 'Sales optimization', blocks: [
+      { time: 'Hr 1–2', title: 'Analyze responses', desc: 'Review all conversations. What\\'s working? What\\'s not? Double down on what works.', type: 'explore' },
+      { time: 'Hr 3–4', title: 'Improve sales funnel', desc: 'Update pitches, Fiverr gigs, Upwork profile based on feedback. A/B test different approaches.', type: 'explore' },
+      { time: 'Hr 5–6', title: 'Reach out to 25 more people', desc: 'Expand outreach. Find more local businesses, use better search terms on LinkedIn.', type: 'explore' }
+    ]},
+    { day: 'Tuesday', theme: 'Custom projects day', blocks: [
+      { time: 'Hr 1–4', title: 'Build chatbots', desc: 'Work on 2–3 custom chatbot projects. Focus on delivery and quality.', type: 'build' },
+      { time: 'Hr 5–6', title: 'Document process', desc: 'Write quick guides for clients on how to use their chatbots. Professional follow-up.', type: 'explore' }
+    ]},
+    { day: 'Wednesday', theme: 'Collect first payment', blocks: [
+      { time: 'Hr 1–2', title: 'Close first deal', desc: 'Finalize first chatbot project with a customer. Ask for payment via GCash, PayMaya, or bank transfer.', type: 'explore' },
+      { time: 'Hr 3–6', title: 'Celebration + momentum', desc: 'First money earned! Document it, post about it. Momentum is real. Keep going!', type: 'explore' }
+    ]},
+    { day: 'Thursday', theme: 'Repeat sales', blocks: [
+      { time: 'Hr 1–6', title: 'Follow-up frenzy', desc: 'Message ALL warm leads again. "I just finished a project like this. Want a demo?"', type: 'explore' }
+    ]},
+    { day: 'Friday', theme: 'Build + sell', blocks: [
+      { time: 'Hr 1–3', title: 'Develop 2nd custom project', desc: 'Build another chatbot or AI tool for high-intent client.', type: 'build' },
+      { time: 'Hr 4–6', title: 'Demo + close', desc: 'Show completed work, negotiate, close deal #2.', type: 'explore' }
+    ]},
+    { day: 'Saturday', theme: 'Month 1 wrap-up', blocks: [
+      { time: 'Hr 1–2', title: 'Count earnings', desc: 'Total up all money earned in Phase 1. Target was ₱10K. Where are you?', type: 'explore' },
+      { time: 'Hr 3–4', title: 'Create case study', desc: 'Document 1 successful project. Client name (with permission), before/after, metrics. Post on LinkedIn.', type: 'explore' },
+      { time: 'Hr 5–6', title: 'Plan Phase 2', desc: 'Rest and celebrate Month 1. You\\'ve shipped real projects and made real money. That\\'s huge.', type: 'rest' }
+    ]},
+    { day: 'Sunday', theme: 'Rest day', blocks: [
+      { time: 'Hr 1–3', title: 'Reflect on Phase 1', desc: 'What worked? What didn\\'t? Which skills improved the most? Which hurt?', type: 'learn' },
+      { time: 'Hr 4–6', title: 'Plan Phase 2', desc: 'Phase 2 goal: ₱100K (3 weeks at ~₱30K/week). How will you scale? More clients? Higher prices? New products?', type: 'learn' }
+    ]}
+  ]
+};
+
+// Keep schedData as alias to week1 for backward compatibility
+const schedData = schedDataByWeek.week1;
+
+function getCurrentScheduleWeek() {
+  const phase = getCurrentPhase();
+  if (phase.id === 1) {
+    const days = Math.floor((new Date() - phase.start) / 86400000);
+    if (days <= 7) return schedDataByWeek.week1;
+    if (days <= 14) return schedDataByWeek.week2;
+    if (days <= 21) return schedDataByWeek.week3;
+    return schedDataByWeek.week4;
   }
-];
+  // For phases 2-4, show a simplified monthly schedule
+  return schedData;
+}
 
 // Build schedule
 function buildSchedule() {
@@ -729,15 +1023,15 @@ buildSchedule();
 function updateAnalytics() {
   const weekStart = new Date();
   weekStart.setDate(weekStart.getDate() - weekStart.getDay());
-  
+
   const weekTasks = tasks.filter(t => new Date(Math.floor(t.id / 1000)) >= weekStart).length;
   const weekHabits = habits.reduce((sum, h) => sum + h.week.filter(Boolean).length, 0);
   const weekEarnings = wins.filter(w => new Date(Math.floor(w.id / 1000)) >= weekStart).reduce((s, w) => s + w.money, 0);
-  
+
   document.getElementById('weekly-tasks').textContent = weekTasks;
   document.getElementById('weekly-habits').textContent = weekHabits;
   document.getElementById('weekly-earnings').textContent = weekEarnings.toLocaleString('en-PH');
-  
+
   let currentStreak = 0;
   for (let i = 0; i < 7; i++) {
     const idx = (today - i + 7) % 7;
@@ -748,6 +1042,98 @@ function updateAnalytics() {
     }
   }
   document.getElementById('daily-streak').textContent = currentStreak + 'd';
+
+  // Update insights
+  document.getElementById('earnings-velocity').textContent = getEarningsVelocity().toLocaleString('en-PH');
+  document.getElementById('best-category').textContent = getBestCategory();
+  document.getElementById('projection').textContent = getProjection().toLocaleString('en-PH');
+
+  // Render earnings chart
+  const earningsData = getLast30DaysEarnings();
+  const earningsCtx = document.getElementById('earnings-chart');
+  if (earningsCtx) {
+    if (earningsChart) earningsChart.destroy();
+    earningsChart = new Chart(earningsCtx, {
+      type: 'line',
+      data: {
+        labels: Object.keys(earningsData),
+        datasets: [{
+          label: 'Daily Earnings (₱)',
+          data: Object.values(earningsData),
+          fill: true,
+          borderColor: 'var(--acc)',
+          backgroundColor: 'rgba(199, 125, 255, 0.1)',
+          tension: 0.4,
+          pointRadius: 3,
+          pointBackgroundColor: 'var(--acc)',
+          pointBorderColor: '#fff'
+        }]
+      },
+      options: {
+        responsive: true,
+        maintainAspectRatio: true,
+        plugins: {
+          legend: { display: false }
+        },
+        scales: {
+          y: {
+            beginAtZero: true,
+            ticks: { color: 'var(--color-text-secondary)' },
+            grid: { color: 'rgba(199, 125, 255, 0.1)' }
+          },
+          x: {
+            ticks: { color: 'var(--color-text-secondary)' },
+            grid: { display: false }
+          }
+        }
+      }
+    });
+  }
+
+  // Render task completion chart
+  const taskData = getWeeklyTaskCompletion();
+  const taskCtx = document.getElementById('task-completion-chart');
+  if (taskCtx) {
+    if (taskCompletionChart) taskCompletionChart.destroy();
+    taskCompletionChart = new Chart(taskCtx, {
+      type: 'bar',
+      data: {
+        labels: Object.keys(taskData),
+        datasets: [{
+          label: 'Tasks Completed',
+          data: Object.values(taskData).map(d => d.completed),
+          backgroundColor: 'rgba(109, 213, 195, 0.6)',
+          borderColor: '#6dd5c3',
+          borderWidth: 1
+        },
+        {
+          label: 'Tasks Total',
+          data: Object.values(taskData).map(d => d.total),
+          backgroundColor: 'rgba(199, 125, 255, 0.2)',
+          borderColor: 'var(--acc)',
+          borderWidth: 1
+        }]
+      },
+      options: {
+        responsive: true,
+        maintainAspectRatio: true,
+        plugins: {
+          legend: { labels: { color: 'var(--color-text-secondary)' } }
+        },
+        scales: {
+          y: {
+            beginAtZero: true,
+            ticks: { color: 'var(--color-text-secondary)' },
+            grid: { color: 'rgba(199, 125, 255, 0.1)' }
+          },
+          x: {
+            ticks: { color: 'var(--color-text-secondary)' },
+            grid: { display: false }
+          }
+        }
+      }
+    });
+  }
 }
 
 // Export Data
@@ -848,21 +1234,24 @@ function updateSyncStatus() {
   }
 }
 
-// AI Hustle research
+// AI Hustle research with multi-turn conversations
 async function askHustle(preset) {
   const q = preset || document.getElementById('ai-q').value.trim();
-  
+
   if (!q) return;
-  
+
   if (!preset) document.getElementById('ai-q').value = '';
-  
+
   const pane = document.getElementById('ai-pane');
   const out = document.getElementById('ai-out');
-  
+
   pane.style.display = 'block';
   out.className = 'ai-loading';
   out.textContent = 'Researching...';
-  
+
+  // Add user message to conversation history
+  hustleConversation.push({ role: 'user', content: q });
+
   try {
     const res = await fetch('https://api.anthropic.com/v1/messages', {
       method: 'POST',
@@ -871,17 +1260,110 @@ async function askHustle(preset) {
         model: 'claude-sonnet-4-20250514',
         max_tokens: 1000,
         system: 'You are a sharp hustle advisor for an 18-year-old in Davao, Philippines who wants to make ₱500,000 before turning 19 (Oct 15 2026). He is learning web dev and AI (HTML/CSS/JS/React/Next.js/Claude API). Give specific, actionable, no-fluff advice. Focus on what works in the Philippines in 2025-2026. Plain text only, no markdown or symbols.',
-        messages: [{ role: 'user', content: q }]
+        messages: hustleConversation
       })
     });
-    
+
     const data = await res.json();
+    const response = data.content && data.content[0] ? data.content[0].text : 'No response — try again.';
+
+    // Add assistant response to conversation history
+    hustleConversation.push({ role: 'assistant', content: response });
+
     out.className = 'ai-txt';
-    out.textContent = data.content && data.content[0] ? data.content[0].text : 'No response — try again.';
+    out.innerHTML = `<div style="margin-bottom:16px"><strong>You:</strong><br>${q}</div><div><strong>AI Advisor:</strong><br>${response}</div>`;
+
+    // Add save snippet button
+    const saveBtn = document.createElement('button');
+    saveBtn.className = 'btn accent';
+    saveBtn.style.marginTop = '12px';
+    saveBtn.textContent = '💾 Save this advice';
+    saveBtn.onclick = () => {
+      savedSnippets.push({
+        id: Date.now(),
+        content: response,
+        topic: q.split(' ').slice(0, 3).join(' '),
+        savedAt: new Date().toLocaleDateString('en-PH')
+      });
+      Storage.save();
+      saveBtn.textContent = '✓ Saved!';
+      saveBtn.disabled = true;
+      setTimeout(() => {
+        saveBtn.textContent = '💾 Save this advice';
+        saveBtn.disabled = false;
+      }, 2000);
+    };
+    out.appendChild(saveBtn);
+
+    Storage.save();
   } catch (e) {
     out.className = 'ai-txt';
     out.textContent = 'Could not reach AI. Check connection and try again.';
   }
+}
+
+// Milestone celebrations
+const milestones = [50000, 100000, 250000, 500000];
+let achievedMilestones = [];
+
+function checkMilestones() {
+  const total = wins.reduce((s, w) => s + w.money, 0);
+  milestones.forEach(m => {
+    if (total >= m && !achievedMilestones.includes(m)) {
+      achievedMilestones.push(m);
+      celebrateMilestone(m);
+    }
+  });
+}
+
+function celebrateMilestone(amount) {
+  const msg = `🎉 Congratulations! You hit ₱${amount.toLocaleString('en-PH')}!`;
+  console.log(msg);
+
+  // Confetti animation
+  for (let i = 0; i < 3; i++) {
+    setTimeout(() => {
+      confetti({ particleCount: 100, spread: 70 });
+    }, i * 200);
+  }
+
+  // Play celebration sound
+  playSound();
+
+  // Browser notification
+  if ('Notification' in window && Notification.permission === 'granted') {
+    new Notification('Milestone Achieved!', {
+      body: msg,
+      icon: '🎉'
+    });
+  }
+}
+
+// Notification system
+function requestNotificationPermission() {
+  if ('Notification' in window && Notification.permission === 'default') {
+    Notification.requestPermission();
+  }
+}
+
+function sendNotification(title, options = {}) {
+  if ('Notification' in window && Notification.permission === 'granted') {
+    new Notification(title, options);
+  }
+}
+
+// Schedule daily notifications
+function scheduleNotifications() {
+  // Check every hour if it's 8am
+  setInterval(() => {
+    const now = new Date();
+    if (now.getHours() === 8 && now.getMinutes() === 0) {
+      sendNotification('Time for your standup?', {
+        body: 'What\'s your main goal today?',
+        tag: 'standup'
+      });
+    }
+  }, 60000);
 }
 
 // Initialize
@@ -896,24 +1378,40 @@ async function askHustle(preset) {
   renderWins();
   updateThemeButton();
   updateSyncStatus();
+
+  // Check achieved milestones on load
+  checkMilestones();
+
   if (document.getElementById('notify-toggle')) {
     document.getElementById('notify-toggle').checked = soundEnabled;
   }
-  
+
+  // Request notification permission
+  requestNotificationPermission();
+
   // Show sync status
   if (supabaseReady) {
     console.log('✓ Running with cloud backup enabled');
   } else {
     console.log('📱 Running offline mode - local storage only');
   }
-  
+
   // Auto-sync every 5 minutes
   setInterval(() => {
     if (supabaseReady) {
       Storage.save().catch(err => console.warn('Auto-sync failed:', err.message));
     }
   }, 5 * 60 * 1000);
-  
+
   // Update sync status UI every 30 seconds
   setInterval(updateSyncStatus, 30000);
+
+  // Schedule notifications
+  scheduleNotifications();
+
+  // Update analytics when tab changes
+  const analyticsBtn = document.querySelectorAll('.nbtn')[6];
+  if (analyticsBtn) {
+    analyticsBtn.addEventListener('click', () => setTimeout(updateAnalytics, 100));
+  }
 })();
