@@ -831,7 +831,8 @@ const schedDataByWeek = {
         type: 'rest'
       }
     ]
-  },
+  }
+  ],
   week2: [
     {
       day: 'Monday',
@@ -904,17 +905,17 @@ const schedDataByWeek = {
     { day: 'Saturday', theme: 'Template business growth', blocks: [
       { time: 'Hr 1–3', title: 'Create second template pack', desc: 'New niche (business proposals, Facebook ad templates, YouTube thumbnails). Design 8 templates.', type: 'build' },
       { time: 'Hr 4', title: 'Create TikTok content', desc: 'Film 3x 30-second template reveal videos. Post with "link in bio" CTAs.', type: 'explore' },
-      { time: 'Hr 5–6', title: 'Analyze metrics', desc: 'Check Upwork/Fiverr messages, Whop sales, TikTok views. Plan next week based on what\\'s working.', type: 'explore' }
+      { time: 'Hr 5–6', title: 'Analyze metrics', desc: 'Check Upwork/Fiverr messages, Whop sales, TikTok views. Plan next week based on what\'s working.', type: 'explore' }
     ]},
     { day: 'Sunday', theme: 'Weekly standup + rest', blocks: [
       { time: 'Hr 1–2', title: 'Review week 3', desc: 'Count leads, conversations, deals in progress. Did any close?', type: 'learn' },
       { time: 'Hr 3–4', title: 'Optimize best channel', desc: 'Whatever channel got most traction (Upwork, cold DM, Fiverr), refine it.', type: 'explore' },
-      { time: 'Hr 5–6', title: 'Rest + plan week 4', desc: 'Step away from screens. Write down this week\\'s wins. Plan week 4 targets.', type: 'rest' }
+      { time: 'Hr 5–6', title: 'Rest + plan week 4', desc: 'Step away from screens. Write down this week\'s wins. Plan week 4 targets.', type: 'rest' }
     ]}
   ],
   week4: [
     { day: 'Monday', theme: 'Sales optimization', blocks: [
-      { time: 'Hr 1–2', title: 'Analyze responses', desc: 'Review all conversations. What\\'s working? What\\'s not? Double down on what works.', type: 'explore' },
+      { time: 'Hr 1–2', title: 'Analyze responses', desc: 'Review all conversations. What\'s working? What\'s not? Double down on what works.', type: 'explore' },
       { time: 'Hr 3–4', title: 'Improve sales funnel', desc: 'Update pitches, Fiverr gigs, Upwork profile based on feedback. A/B test different approaches.', type: 'explore' },
       { time: 'Hr 5–6', title: 'Reach out to 25 more people', desc: 'Expand outreach. Find more local businesses, use better search terms on LinkedIn.', type: 'explore' }
     ]},
@@ -936,10 +937,10 @@ const schedDataByWeek = {
     { day: 'Saturday', theme: 'Month 1 wrap-up', blocks: [
       { time: 'Hr 1–2', title: 'Count earnings', desc: 'Total up all money earned in Phase 1. Target was ₱10K. Where are you?', type: 'explore' },
       { time: 'Hr 3–4', title: 'Create case study', desc: 'Document 1 successful project. Client name (with permission), before/after, metrics. Post on LinkedIn.', type: 'explore' },
-      { time: 'Hr 5–6', title: 'Plan Phase 2', desc: 'Rest and celebrate Month 1. You\\'ve shipped real projects and made real money. That\\'s huge.', type: 'rest' }
+      { time: 'Hr 5–6', title: 'Plan Phase 2', desc: 'Rest and celebrate Month 1. You\'ve shipped real projects and made real money. That\'s huge.', type: 'rest' }
     ]},
     { day: 'Sunday', theme: 'Rest day', blocks: [
-      { time: 'Hr 1–3', title: 'Reflect on Phase 1', desc: 'What worked? What didn\\'t? Which skills improved the most? Which hurt?', type: 'learn' },
+      { time: 'Hr 1–3', title: 'Reflect on Phase 1', desc: 'What worked? What didn\'t? Which skills improved the most? Which hurt?', type: 'learn' },
       { time: 'Hr 4–6', title: 'Plan Phase 2', desc: 'Phase 2 goal: ₱100K (3 weeks at ~₱30K/week). How will you scale? More clients? Higher prices? New products?', type: 'learn' }
     ]}
   ]
